@@ -13,10 +13,10 @@ The API is not complete and it may change at any moment.
 import { Packer } from 'binay-packer'
 
 new Packer('A3A3A3').pack(['a', 'b', 'c'])
-// => "a  b  c  "
+// => Buffer.from("a  b  c  ")
 
 new Packer('a3a3a3').pack(['a', 'b', 'c'])
-// => "a\000\000b\000\000c\000\000"
+// => Buffer.from("a\000\000b\000\000c\000\000")
 ```
 
 Directives `A,` `a,` and `Z` may be followed by a count, which gives the width of the resulting field.
