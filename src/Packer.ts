@@ -152,16 +152,19 @@ export class Packer {
     /**
      * @param input A Buffer to unpack
      */
-    unpack(input: Buffer): Array<string | number>
+    unpack<T extends Array<string | number>>(input: Buffer): T
     /**
      * @param input The string to unpack
      * @param encoding The encoding of the string, defaults to "binary"
      */
-    unpack(input: string, encoding?: BufferEncoding): Array<string | number>
-    unpack(
+    unpack<T extends Array<string | number>>(
+        input: string,
+        encoding?: BufferEncoding
+    ): T
+    unpack<T extends Array<string | number>>(
         input: Buffer | string,
         encoding: BufferEncoding = 'binary'
-    ): Array<string | number> {
+    ): T {
         try {
             return this._unpack(input, encoding)
         } catch (e) {
@@ -170,10 +173,10 @@ export class Packer {
         }
     }
 
-    private _unpack(
+    private _unpack<T extends Array<string | number>>(
         input: Buffer | string,
         encoding: BufferEncoding = 'binary'
-    ): Array<string | number> {
+    ): T {
         input = Buffer.isBuffer(input) ? input : Buffer.from(input, encoding)
 
         let res: Array<string | number> = []
@@ -274,7 +277,7 @@ export class Packer {
         }
 
         this._ensureAllTokensConsumed()
-        return res
+        return res as T
     }
 
     private _consumeToken(type: TokenType): Token {
