@@ -1,25 +1,17 @@
-import { TokenType, Tokenizer, Token } from './Tokenizer'
+import { Tokenizer, Token } from './Tokenizer'
+import { TokenScanner } from './TokenScanner'
 
 const STRING_TYPES = ['a', 'A', 'h', 'H', 'Z']
 
 export class Packer {
     private tokens: Token[]
-    private index = -1
 
     constructor(public format: string) {
         this.tokens = new Tokenizer(format).tokenize()
     }
 
     pack(data: Array<string | number>): Buffer {
-        try {
-            return this._pack(data)
-        } catch (e) {
-            this.index = -1
-            throw e
-        }
-    }
-
-    private _pack(data: Array<string | number>): Buffer {
+        const scanner = new TokenScanner(this.tokens)
         const buffers: Buffer[] = []
         let i = -1
         while (++i < data.length) {
@@ -31,19 +23,19 @@ export class Packer {
             //     i,
             //     buffers,
             // })
-            if (this.allTokensConsumed()) {
+            if (scanner.allTokensConsumed()) {
                 break
             }
-            const { value: type } = this._consumeToken('type')
+            const { value: type } = scanner.consumeToken('type')
             let length = 1
             let sData = String(data[i] ?? '')
 
-            if (this._peekToken('modifier_length')) {
-                length = Number(this._consumeToken('modifier_length').value)
+            if (scanner.peekToken('modifier_length')) {
+                length = Number(scanner.consumeToken('modifier_length').value)
             }
 
-            if (this._peekToken('modifier_splat')) {
-                this._consumeToken('modifier_splat')
+            if (scanner.peekToken('modifier_splat')) {
+                scanner.consumeToken('modifier_splat')
 
                 if (STRING_TYPES.includes(type)) {
                     length = sData.length
@@ -144,7 +136,7 @@ export class Packer {
             }
         }
 
-        this._ensureAllTokensConsumed()
+        scanner.ensureAllTokensConsumed()
         // console.log('result', Buffer.concat(buffers))
         return Buffer.concat(buffers)
     }
@@ -165,32 +157,21 @@ export class Packer {
         input: Buffer | string,
         encoding: BufferEncoding = 'binary'
     ): T {
-        try {
-            return this._unpack(input, encoding)
-        } catch (e) {
-            this.index = -1
-            throw e
-        }
-    }
-
-    private _unpack<T extends Array<string | number>>(
-        input: Buffer | string,
-        encoding: BufferEncoding = 'binary'
-    ): T {
         input = Buffer.isBuffer(input) ? input : Buffer.from(input, encoding)
+        const scanner = new TokenScanner(this.tokens)
 
         let res: Array<string | number> = []
-        while (this._peekToken('type')) {
-            const { value: type } = this._consumeToken('type')
+        while (scanner.peekToken('type')) {
+            const { value: type } = scanner.consumeToken('type')
 
             let length = 1
 
-            if (this._peekToken('modifier_length')) {
-                length = Number(this._consumeToken('modifier_length').value)
+            if (scanner.peekToken('modifier_length')) {
+                length = Number(scanner.consumeToken('modifier_length').value)
             }
 
-            if (this._peekToken('modifier_splat')) {
-                this._consumeToken('modifier_splat')
+            if (scanner.peekToken('modifier_splat')) {
+                scanner.consumeToken('modifier_splat')
                 length = -1
             }
 
@@ -276,40 +257,8 @@ export class Packer {
             }
         }
 
-        this._ensureAllTokensConsumed()
+        scanner.ensureAllTokensConsumed()
         return res as T
-    }
-
-    private _consumeToken(type: TokenType): Token {
-        const token = this.tokens[++this.index]
-        if (!token || (type && token.type !== type)) {
-            throw new Error(
-                `Could not consume token of type "${type}", token was: ${token}`
-            )
-        }
-        return token
-    }
-
-    private _peekToken(type: TokenType): boolean {
-        const token = this.tokens[this.index + 1]
-        if (!token) {
-            return false
-        }
-        return token.type === type
-    }
-
-    private _ensureAllTokensConsumed() {
-        const index = this.index
-        this.index = -1
-        if (index !== this.tokens.length - 1) {
-            throw new Error(
-                `ArgumentError: There are fewer elements in the given data than the format requires`
-            )
-        }
-    }
-
-    private allTokensConsumed(): boolean {
-        return this.index === this.tokens.length - 1
     }
 }
 
